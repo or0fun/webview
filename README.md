@@ -1,7 +1,7 @@
 # 封装的webView
 
 ```
-compile 'com.baiwanlu.android:webview:1.0.0'
+compile 'com.baiwanlu.android:webview:1.0.2'
 ```
 
 # 使用方法
