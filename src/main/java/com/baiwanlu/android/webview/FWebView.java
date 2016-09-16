@@ -3,22 +3,25 @@ package com.baiwanlu.android.webview;
 import android.app.Activity;
 import android.content.Context;
 import android.content.ContextWrapper;
+import android.content.Intent;
 import android.graphics.Bitmap;
 import android.graphics.Color;
 import android.graphics.drawable.ColorDrawable;
+import android.graphics.drawable.Drawable;
 import android.net.Uri;
-import android.net.http.SslError;
 import android.util.AttributeSet;
 import android.view.View;
-import android.webkit.SslErrorHandler;
-import android.webkit.ValueCallback;
-import android.webkit.WebChromeClient;
-import android.webkit.WebSettings;
-import android.webkit.WebView;
-import android.webkit.WebViewClient;
+import android.webkit.CookieManager;
+import android.webkit.CookieSyncManager;
 import android.widget.ProgressBar;
 
 import com.baiwanlu.android.webview.util.WebViewLog;
+import com.tencent.smtt.sdk.WebChromeClient;
+import com.tencent.smtt.sdk.WebSettings;
+import com.tencent.smtt.sdk.WebView;
+import com.tencent.smtt.sdk.WebViewClient;
+
+import java.util.List;
 
 
 /**
@@ -27,9 +30,11 @@ import com.baiwanlu.android.webview.util.WebViewLog;
  */
 public class FWebView extends WebView {
 
+    public static final int FILE_CHOOSER = 9998;
+
     ProgressBar progressbar;
     boolean hasProgressBar = true;
-    FWebViewCallBack fWebViewCallBack;
+    FWebViewCallBack shWebViewCallBack;
 
     public FWebView(Context context) {
         super(context);
@@ -52,35 +57,42 @@ public class FWebView extends WebView {
             return;
         }
 
-        WebSettings settings = getSettings();
-        settings.setJavaScriptEnabled(true);
-        settings.setDefaultTextEncodingName("utf-8");
+        WebSettings webSetting = this.getSettings();
+        webSetting.setJavaScriptEnabled(true);
+        webSetting.setJavaScriptCanOpenWindowsAutomatically(true);
+        webSetting.setAllowFileAccess(true);
+        webSetting.setLayoutAlgorithm(WebSettings.LayoutAlgorithm.NARROW_COLUMNS);
+        webSetting.setSupportZoom(true);
+        webSetting.setBuiltInZoomControls(false);
+        webSetting.setUseWideViewPort(true);
+        webSetting.setSupportMultipleWindows(true);
+        webSetting.setLoadWithOverviewMode(true);
+        webSetting.setAppCacheEnabled(true);
+        webSetting.setDatabaseEnabled(true);
+        webSetting.setDomStorageEnabled(true);
+        webSetting.setGeolocationEnabled(true);
+        webSetting.setAppCacheMaxSize(Long.MAX_VALUE);
+        // webSetting.setPageCacheCapacity(IX5WebSettings.DEFAULT_CACHE_CAPACITY);
+        webSetting.setPluginState(WebSettings.PluginState.ON_DEMAND);
+        webSetting.setRenderPriority(WebSettings.RenderPriority.HIGH);
+        webSetting.setCacheMode(WebSettings.LOAD_NO_CACHE);
 
-        /***打开本地缓存提供JS调用**/
-        settings.setDomStorageEnabled(true);
-        settings.setAppCacheMaxSize(1024*1024*8);
-        String appCachePath = getContext().getCacheDir().getAbsolutePath();
-        settings.setAppCachePath(appCachePath);
-        settings.setAllowFileAccess(true);
-        settings.setLoadWithOverviewMode(true);
-        settings.setUseWideViewPort(true);
-        String ua = settings.getUserAgentString();
+        String ua = webSetting.getUserAgentString();
         //尚妆是ShowJoyAndroid
-        settings.setUserAgentString(ua.replace("Android", FWebViewManager.getUserAgentString()));
+        webSetting.setUserAgentString(webSetting.getUserAgentString() + FWebViewManager.getUserAgentString());
 
         progressbar = new ProgressBar(getContext(), null, android.R.attr.progressBarStyleHorizontal);
-        progressbar.setLayoutParams(new LayoutParams(LayoutParams.MATCH_PARENT,3, 0, 0));
+        progressbar.setLayoutParams(new LayoutParams(LayoutParams.MATCH_PARENT,3));
         progressbar.setProgressDrawable(new ColorDrawable(Color.parseColor("#976DF7")));
         addView(progressbar);
 
-        setWebChromeClient(new SHWebChromeClient());
-        setWebViewClient(new SHWebViewClient());
+        setWebChromeClient(new FWebChromeClient());
+        setWebViewClient(new FWebViewClient());
 
         Activity activity = getActivity();
 
         if (null != activity) {
             setWebViewCallBack(new FWebViewCallBack(activity));
-            addJavascriptInterface(new FJavascriptInterfaceImp(activity), FWebViewManager.getJavascriptInterfaceName());
         }
     }
 
@@ -89,7 +101,7 @@ public class FWebView extends WebView {
      * @param callBack
      */
     public void setWebViewCallBack(FWebViewCallBack callBack) {
-        fWebViewCallBack = callBack;
+        shWebViewCallBack = callBack;
     }
 
     @Override
@@ -106,8 +118,12 @@ public class FWebView extends WebView {
      * 设置javascript接口
      * @param object
      */
-    public void addJavascriptInterface(FJavascriptInterfaceImp object) {
+    public void addJavascriptInterface(Object object) {
         super.addJavascriptInterface(object, FWebViewManager.getJavascriptInterfaceName());
+    }
+
+    public void setProgressbarDrawable(Drawable drawable) {
+        progressbar.setProgressDrawable(drawable);
     }
 
     /**
@@ -153,7 +169,7 @@ public class FWebView extends WebView {
         return null;
     }
 
-    class SHWebChromeClient extends WebChromeClient {
+    class FWebChromeClient extends WebChromeClient {
         @Override
         public void onProgressChanged(WebView view, int newProgress) {
             super.onProgressChanged(view, newProgress);
@@ -166,55 +182,45 @@ public class FWebView extends WebView {
                     progressbar.setProgress(newProgress);
                 }
             }
-            if (null != fWebViewCallBack) {
-                fWebViewCallBack.onProgressChanged(view, newProgress);
+            if (null != shWebViewCallBack) {
+                shWebViewCallBack.onProgressChanged((FWebView) view, newProgress);
             }
         }
 
         @Override
         public void onReceivedTitle(WebView view, String title) {
             super.onReceivedTitle(view, title);
-            if (null != fWebViewCallBack) {
-                fWebViewCallBack.onReceivedTitle(view, title);
+            if (null != shWebViewCallBack) {
+                shWebViewCallBack.onReceivedTitle((FWebView)view, title);
             }
         }
 
-        //Android 5.0+
         @Override
-        public boolean onShowFileChooser(WebView webView, ValueCallback<Uri[]> filePathCallback, FileChooserParams fileChooserParams) {
-            if (null != fWebViewCallBack) {
-                return fWebViewCallBack.onShowFileChooser(webView, filePathCallback, fileChooserParams);
-            }
-            return true;
+        public void openFileChooser(com.tencent.smtt.sdk.ValueCallback<Uri> uploadFile, String acceptType, String captureType) {
+            Intent i = new Intent(Intent.ACTION_GET_CONTENT);
+            i.addCategory(Intent.CATEGORY_OPENABLE);
+            i.setType("*/*");
+            ((Activity) (FWebView.this.getContext())).startActivityForResult(Intent.createChooser(i, "choose files"),
+                    FWebView.FILE_CHOOSER);
+            super.openFileChooser(uploadFile, acceptType, captureType);
         }
 
-        public void openFileChooser(ValueCallback<Uri> uploadMsg) {
-            if (null != fWebViewCallBack) {
-                fWebViewCallBack.openFileChooser(uploadMsg, null, null);
+        @Override
+        public boolean onJsAlert(WebView view, String url, String message, com.tencent.smtt.export.external.interfaces.JsResult result) {
+            if (null != shWebViewCallBack) {
+                return shWebViewCallBack.onJsAlert((FWebView)view, url, message, result);
             }
+            return super.onJsAlert(view, url, message, result);
         }
 
-        public void openFileChooser( ValueCallback uploadMsg, String acceptType ) {
-            if (null != fWebViewCallBack) {
-                fWebViewCallBack.openFileChooser(uploadMsg, acceptType, null);
-            }
-
-        }
-
-        public void openFileChooser(ValueCallback<Uri> uploadMsg, String acceptType, String capture){
-            if (null != fWebViewCallBack) {
-                fWebViewCallBack.openFileChooser(uploadMsg, acceptType, capture);
-            }
-
-        }
     }
 
-    class SHWebViewClient extends WebViewClient {
+    class FWebViewClient extends WebViewClient {
         @Override
         public boolean shouldOverrideUrlLoading(WebView view, String url) {
             WebViewLog.d("shouldOverrideUrlLoading", url);
-            if (null != fWebViewCallBack) {
-                return fWebViewCallBack.shouldOverrideUrlLoading(view, url);
+            if (null != shWebViewCallBack) {
+                return shWebViewCallBack.shouldOverrideUrlLoading((FWebView)view, url);
             }
             return super.shouldOverrideUrlLoading(view, url);
         }
@@ -223,8 +229,8 @@ public class FWebView extends WebView {
         public void onPageStarted(WebView view, String url, Bitmap favicon) {
             super.onPageStarted(view, url, favicon);
             WebViewLog.d("onPageStarted", url);
-            if (null != fWebViewCallBack) {
-                fWebViewCallBack.onPageStarted(view, url, favicon);
+            if (null != shWebViewCallBack) {
+                shWebViewCallBack.onPageStarted((FWebView)view, url, favicon);
             }
         }
 
@@ -232,17 +238,34 @@ public class FWebView extends WebView {
         public void onPageFinished(WebView view, String url) {
             super.onPageFinished(view, url);
             WebViewLog.d("onPageFinished", url);
-            if (null != fWebViewCallBack) {
-                fWebViewCallBack.onPageFinished(view, url);
+            if (null != shWebViewCallBack) {
+                shWebViewCallBack.onPageFinished((FWebView)view, url);
             }
         }
+    }
 
-        @Override
-        public void onReceivedSslError(WebView view, SslErrorHandler handler, SslError error) {
-            super.onReceivedSslError(view, handler, error);
-            if (null != fWebViewCallBack) {
-                fWebViewCallBack.onReceivedSslError(view, handler, error);
+    public int getWebScrollY() {
+        return super.getWebScrollY();
+    }
+
+
+    public static void setWebViewCookie(Context context, String url, List<String> cookies) {
+        CookieSyncManager.createInstance(context);
+        CookieManager cookieManager = CookieManager.getInstance();
+        cookieManager.setAcceptCookie(true);
+
+        if (null != cookies) {
+            for (String cookie : cookies) {
+                cookieManager.setCookie(url, cookie);
             }
         }
+        CookieSyncManager.getInstance().sync();
+    }
+
+    public static void removeWebViewCookie(Context context) {
+        CookieSyncManager.createInstance(context);
+        CookieManager cookieManager = CookieManager.getInstance();
+        cookieManager.removeAllCookie();
+        CookieSyncManager.getInstance().sync();
     }
 }

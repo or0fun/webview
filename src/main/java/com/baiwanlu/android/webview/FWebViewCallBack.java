@@ -2,13 +2,9 @@ package com.baiwanlu.android.webview;
 
 import android.app.Activity;
 import android.graphics.Bitmap;
-import android.net.Uri;
 import android.net.http.SslError;
 import android.view.KeyEvent;
 import android.webkit.SslErrorHandler;
-import android.webkit.ValueCallback;
-import android.webkit.WebChromeClient;
-import android.webkit.WebView;
 
 /**
  * webView 回调
@@ -26,7 +22,7 @@ public class FWebViewCallBack {
      * @param view
      * @param newProgress
      */
-    public void onProgressChanged(WebView view, int newProgress) {
+    public void onProgressChanged(FWebView view, int newProgress) {
     }
 
     /**
@@ -34,46 +30,30 @@ public class FWebViewCallBack {
      * @param view
      * @param title
      */
-    public void onReceivedTitle(WebView view, String title) {
+    public void onReceivedTitle(FWebView view, String title) {
 
     }
 
-    public void onPageFinished(WebView webview, String url) {
+    public void onPageFinished(FWebView webview, String url) {
     }
 
-    public void onPageStarted(WebView view, String url, Bitmap favicon) {
+    public void onPageStarted(FWebView view, String url, Bitmap favicon) {
 
     }
 
-    public boolean shouldOverrideKeyEvent(WebView view, KeyEvent event) {
+    public boolean shouldOverrideKeyEvent(FWebView view, KeyEvent event) {
         return false;
     }
 
-    public boolean shouldOverrideUrlLoading(WebView view, String url) {
+    public boolean shouldOverrideUrlLoading(FWebView view, String url) {
         return false;
     }
 
-    public void onReceivedSslError(WebView view, SslErrorHandler handler, SslError error) {
+    public void onReceivedSslError(FWebView view, SslErrorHandler handler, SslError error) {
 
     }
 
-    /**
-     * 选择文件
-     * @param webView
-     * @param filePathCallback
-     * @param fileChooserParams
-     */
-    public boolean onShowFileChooser(WebView webView, ValueCallback<Uri[]> filePathCallback, WebChromeClient.FileChooserParams fileChooserParams) {
-        return true;
-    }
-
-
-    /**
-     * 选择文件
-     * @param filePathCallback
-     * @param acceptType
-     * @param capture
-     */
-    public void openFileChooser(ValueCallback filePathCallback,  String acceptType, String capture) {
+    public boolean onJsAlert(FWebView view, String url, String message, com.tencent.smtt.export.external.interfaces.JsResult result) {
+        return false;
     }
 }
